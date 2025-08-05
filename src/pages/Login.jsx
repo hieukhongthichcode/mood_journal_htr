@@ -1,98 +1,110 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect, useContext } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { useContext } from "react";
+import AuthLayout from "../components/AuthLayout";
 import { AuthContext } from "../context/AuthContext";
 
-
 function Login() {
-  const { setUser } = useContext(AuthContext);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const navigate = useNavigate();
   const location = useLocation();
+  const { setUser, setToken } = useContext(AuthContext);
 
-  // 👉 Nhận dữ liệu từ trang đăng ký và điền sẵn vào form
   useEffect(() => {
-    if (location.state?.email && location.state?.password) {
+    if (location.state?.email) {
       setFormData({
         email: location.state.email,
-        password: location.state.password,
+        password: location.state.password || "",
       });
     }
+    if (location.state?.registered) {
+    toast.success("🎉 Đăng ký thành công! Vui lòng đăng nhập.");
+  }
   }, [location.state]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    const res = await axios.post("http://localhost:5000/api/auth/login", {
-      email: formData.email,
-      password: formData.password,
-    });
-     localStorage.setItem('token', res.data.token);
-     navigate('/dashboard');
-    // ✅ Lưu thông tin vào localStorage và cập nhật context
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("user", JSON.stringify(res.data.user));
-    setUser(res.data.user); // cập nhật context
+    e.preventDefault();
+    console.log("🔐 Đang gửi dữ liệu đăng nhập:", formData);
 
-    // ✅ Thông báo & điều hướng sau khi thành công
-    toast.success("🎉 Đăng nhập thành công!");
-    navigate("/home");
-  } catch (error) {
-    const msg = error.response?.data?.message || "❌ Đăng nhập thất bại!";
-    toast.error(msg);
-  }
-};
+    try {
+      const res = await axios.post("http://localhost:5000/api/auth/login", formData);
+      console.log("📥 Phản hồi từ backend:", res.data);
 
+      const token = res.data.token;
+      const user = res.data.user;
+
+      if (!token || !user) {
+        console.error("❌ Thiếu token hoặc user từ backend!");
+        toast.error("Dữ liệu đăng nhập không hợp lệ.");
+        return;
+      }
+
+      // ✅ Lưu localStorage
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+      console.log("📦 Đã lưu vào localStorage:", { token, user });
+
+      // ✅ Cập nhật vào context
+      setToken(token);
+      setUser(user);
+      console.log("✅ Đã cập nhật AuthContext");
+
+      toast.success("✅ Đăng nhập thành công!");
+      navigate("/home");
+    } catch (err) {
+      const msg = err.response?.data?.message || "❌ Đăng nhập thất bại!";
+      console.error("🚨 Lỗi đăng nhập:", err);
+      toast.error(msg);
+    }
+  };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-[#f5f7fa] dark:bg-gray-900 transition-colors">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white dark:bg-slate-800 dark:text-white p-8 rounded shadow-lg w-96 transition-colors"
-      >
-        <h2 className="text-2xl font-semibold mb-6 text-center text-green-600 dark:text-green-400">
-          Đăng nhập
-        </h2>
+    <AuthLayout>
+      <h2 className="text-3xl font-bold mb-6 dark:text-white text-center">
+        Welcome back 👋
+      </h2>
 
+      <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="email"
           name="email"
+          placeholder="Email"
+          required
           value={formData.email}
           onChange={handleChange}
-          placeholder="Email"
-          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded mb-4 bg-white dark:bg-slate-700 dark:text-white"
-          required
+          className="w-full px-4 py-2 bg-[#2D2A3E] text-white rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
         />
 
         <input
           type="password"
           name="password"
+          placeholder="Password"
+          required
           value={formData.password}
           onChange={handleChange}
-          placeholder="Mật khẩu"
-          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded mb-4 bg-white dark:bg-slate-700 dark:text-white"
-          required
+          className="w-full px-4 py-2 bg-[#2D2A3E] text-white rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
         />
 
         <button
           type="submit"
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-md transition"
         >
-          Đăng nhập
+          Log in
         </button>
+
+        <p className="text-center text-sm text-gray-400">
+          Don’t have an account?{" "}
+          <Link to="/register" className="text-purple-400 hover:underline">
+            Register
+          </Link>
+        </p>
       </form>
-    </div>
+    </AuthLayout>
   );
 }
 

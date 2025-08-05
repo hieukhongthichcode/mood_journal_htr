@@ -1,68 +1,141 @@
-import { Link } from 'react-router-dom';
-import { useEffect, useState, useContext } from 'react';
-import { Sun, Moon } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useContext, useRef } from 'react';
+import { Sun, Moon, Menu, X } from 'lucide-react';
 import { AuthContext } from "../context/AuthContext";
 
 function Navbar() {
-  const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem('theme') === 'dark';
-  });
+  const [isDark, setIsDark] = useState(() => localStorage.getItem("theme") === "dark");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const { user, setUser } = useContext(AuthContext); // lấy thông tin user
+  const dropdownRef = useRef(null);
+  const avatarRef = useRef(null);
+  const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
 
+  // Dark mode
   useEffect(() => {
     const root = window.document.documentElement;
     if (isDark) {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      root.classList.remove("dark");
+      localStorage.setItem("theme", "light");
     }
   }, [isDark]);
 
-  const toggleTheme = () => setIsDark(!isDark);
+  const toggleTheme = () => setIsDark(prev => !prev);
+  const toggleMenu = () => setMenuOpen(prev => !prev);
+  const toggleDropdown = () => setDropdownOpen(prev => !prev);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setUser(null);
+    logout();
+    navigate("/login");
   };
 
+  // Đóng dropdown khi click bên ngoài
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target) &&
+        avatarRef.current &&
+        !avatarRef.current.contains(event.target)
+      ) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // ✅ Reset dropdown khi user thay đổi (sau đăng nhập)
+  useEffect(() => {
+    setDropdownOpen(false);
+  }, [user]);
+
   return (
-    <nav className="bg-slate-900/80 dark:bg-slate-800 backdrop-blur-md text-slate-100 p-4 shadow-xl rounded-b-2xl fixed w-full top-0 z-50">
-      <div className="container mx-auto flex justify-between items-center px-4">
-        <div className="flex items-center space-x-2">
-          <h1 className="text-2xl font-bold tracking-wide text-indigo-400">Mood Journal</h1>
-          <button
-            onClick={toggleTheme}
-            className="hover:text-yellow-400 transition"
-            aria-label="Toggle dark mode"
-          >
+    <nav className="bg-gradient-to-r from-indigo-500 to-purple-600 dark:from-purple-900 dark:to-indigo-900 text-white fixed w-full top-0 z-50 shadow-lg rounded-b-2xl">
+      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        {/* Logo & Theme */}
+        <div className="flex items-center gap-3">
+          <Link to="/" className="text-2xl font-bold tracking-wide">
+            Mood Journal
+          </Link>
+          <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-white/20">
             {isDark ? <Sun size={20} /> : <Moon size={20} />}
           </button>
         </div>
-        <div className="space-x-6">
-          <Link to="/" className="hover:text-indigo-400 transition font-medium">Trang chủ</Link>
 
-          {user ? (
+        {/* Desktop Menu */}
+        <div className="hidden md:flex items-center gap-6 font-medium">
+          <Link to="/" className="hover:underline underline-offset-4">Trang chủ</Link>
+
+          {!user ? (
             <>
-              <span className="font-medium text-green-300">👋 {user.username}</span>
+              <Link to="/login" className="hover:underline">Đăng nhập</Link>
+              <Link to="/register" className="hover:underline">Đăng ký</Link>
+            </>
+          ) : (
+            <div className="relative">
               <button
-                onClick={handleLogout}
-                className="hover:text-red-400 transition font-medium"
+                onClick={toggleDropdown}
+                className="flex items-center gap-2 focus:outline-none"
+                ref={avatarRef}
               >
-                Đăng xuất
+                <img
+                  src={localStorage.getItem("customAvatar") || user?.avatar || "/default-avatar.png"}
+                  className="w-8 h-8 rounded-full border-2 border-white object-cover"
+                  alt="User Avatar"
+                />
+                <span className="text-white font-medium">{user.name || user.username}</span>
               </button>
+
+              {dropdownOpen && (
+                <div
+                  ref={dropdownRef}
+                  className="absolute right-0 mt-2 w-40 bg-white text-black rounded-md shadow-lg py-2 z-50"
+                >
+                  <Link to="/profile" className="block px-4 py-2 hover:bg-gray-100">Trang cá nhân</Link>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                  >
+                    Đăng xuất
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Toggle */}
+        <div className="md:hidden">
+          <button onClick={toggleMenu} className="p-2">
+            {menuOpen ? <X /> : <Menu />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="md:hidden px-4 pb-4 space-y-3 font-medium">
+          <Link to="/" className="block hover:underline">Trang chủ</Link>
+          {!user ? (
+            <>
+              <Link to="/login" className="block hover:underline">Đăng nhập</Link>
+              <Link to="/register" className="block hover:underline">Đăng ký</Link>
             </>
           ) : (
             <>
-              <Link to="/login" className="hover:text-indigo-400 transition font-medium">Đăng nhập</Link>
-              <Link to="/register" className="hover:text-indigo-400 transition font-medium">Đăng ký</Link>
+              <Link to="/profile" className="block hover:underline">Trang cá nhân</Link>
+              <button onClick={handleLogout} className="block text-left hover:underline">Đăng xuất</button>
             </>
           )}
         </div>
-      </div>
+      )}
     </nav>
   );
 }

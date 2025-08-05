@@ -29,3 +29,5 @@ async function analyzeMood(text) {
     return { label: 'UNKNOWN', score: 0 };
   }
 }
+
+module.exports = analyzeMood;

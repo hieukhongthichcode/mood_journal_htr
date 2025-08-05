@@ -1,131 +1,109 @@
 import { useState } from "react";
-import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import AuthLayout from "../components/AuthLayout";
 import axios from "axios";
 
-function Register() {
+const Register = () => {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     password: "",
-    confirmPassword: "",
   });
 
-  const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const username = formData.username.trim();
-    const email = formData.email.trim();
-    const password = formData.password.trim();
-    const confirmPassword = formData.confirmPassword.trim();
-
-    // ✅ Kiểm tra trống
-    if (!username || !email || !password) {
-      toast.error("❌ Vui lòng điền đầy đủ thông tin.");
-      return;
-    }
-
-    // ✅ Kiểm tra email đơn giản
-    if (!email.includes("@") || !email.includes(".")) {
-      toast.error("❌ Email không hợp lệ.");
-      return;
-    }
-
-    // ✅ Kiểm tra xác nhận mật khẩu
-    if (password !== confirmPassword) {
-      toast.error("❌ Mật khẩu xác nhận không khớp.");
-      return;
-    }
+    setLoading(true);
+    setError("");
 
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/register", {
-        username,
-        email,
-        password,
-      });
+      const res = await axios.post("/api/auth/register", formData);
 
-      toast.success("🎉 Đăng ký thành công! Chuyển sang đăng nhập...");
-
-      setTimeout(() => {
+      if (res.status === 201 || res.status === 200) {
+        // 👉 Chuyển hướng và truyền thông báo + dữ liệu đăng nhập sang Login
         navigate("/login", {
           state: {
-            email,
-            password,
+            email: formData.email,
+            password: formData.password,
+            registered: true,
           },
         });
-      }, 1500);
-    } catch (error) {
-      const msg = error.response?.data?.message || "❌ Đăng ký thất bại!";
-      toast.error(msg);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Đăng ký thất bại!");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-[#f5f7fa] dark:bg-gray-900 transition-colors">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white dark:bg-slate-800 dark:text-white p-8 rounded shadow-lg w-96 transition-colors"
-      >
-        <h2 className="text-2xl font-semibold mb-6 text-center text-green-600 dark:text-green-400">
-          Đăng ký
-        </h2>
+    <AuthLayout>
+      <h2 className="text-3xl font-semibold text-gray-800 dark:text-white text-center mb-8">
+        Create an account
+      </h2>
 
+      <p className="mb-6 text-gray-500 dark:text-gray-300 text-sm">
+        Already have an account?{" "}
+        <Link
+          to="/login"
+          className="text-purple-600 dark:text-purple-400 underline"
+        >
+          Log in
+        </Link>
+      </p>
+
+      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+      <form onSubmit={handleSubmit}>
         <input
           type="text"
           name="username"
           value={formData.username}
           onChange={handleChange}
-          placeholder="Tên người dùng"
-          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded mb-4 bg-white dark:bg-slate-700 dark:text-white"
+          placeholder="Username"
           required
+          className="w-full px-4 py-2 mb-4 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
-
         <input
           type="email"
           name="email"
           value={formData.email}
           onChange={handleChange}
           placeholder="Email"
-          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded mb-4 bg-white dark:bg-slate-700 dark:text-white"
           required
+          className="w-full px-4 py-2 mb-4 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
-
         <input
           type="password"
           name="password"
           value={formData.password}
           onChange={handleChange}
-          placeholder="Mật khẩu"
-          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded mb-4 bg-white dark:bg-slate-700 dark:text-white"
+          placeholder="Password"
           required
-        />
-
-        <input
-          type="password"
-          name="confirmPassword"
-          value={formData.confirmPassword}
-          onChange={handleChange}
-          placeholder="Xác nhận mật khẩu"
-          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded mb-4 bg-white dark:bg-slate-700 dark:text-white"
-          required
+          className="w-full px-4 py-2 mb-4 border rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         />
 
         <button
           type="submit"
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded-md transition duration-300"
+          disabled={loading}
         >
-          Đăng ký
+          {loading ? "Creating..." : "Create Account"}
         </button>
       </form>
-    </div>
+    </AuthLayout>
   );
-}
+};
 
 export default Register;
