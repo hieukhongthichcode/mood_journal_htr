@@ -7,7 +7,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Tải mô hình cảm xúc
-classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-go-emotion", top_k=1)
+classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-go-emotion")
 
 # Bản đồ ánh xạ nhiều cảm xúc chi tiết về các nhóm chính
 emotion_map = {
@@ -31,7 +31,7 @@ def map_emotion(label):
 def analyze():
     data = request.get_json()
     content = data.get('content')
-    user_selected_label = data.get('moodLabel')  # người dùng chọn cảm xúc không?
+    user_selected_label = data.get('moodLabel')
 
     if not content:
         return jsonify({'error': 'Thiếu content'}), 400
@@ -40,7 +40,7 @@ def analyze():
     if user_selected_label:
         return jsonify({
             'label': user_selected_label.lower(),
-            'score': 1.0  # Ưu tiên cảm xúc người dùng chọn, không phân tích
+            'score': 1.0
         })
 
     # Nếu không có → tiến hành phân tích AI
@@ -50,7 +50,7 @@ def analyze():
         return jsonify({'error': f'Lỗi dịch: {str(e)}'}), 500
 
     try:
-        result = classifier(translated)[0][0]
+        result = classifier(translated, top_k=1)[0][0]
         label = result['label'].lower()
         score = result['score']
         mapped_label = map_emotion(label)
@@ -59,8 +59,9 @@ def analyze():
 
     return jsonify({
         'label': mapped_label,
+        'original_label': label,
         'score': score
     })
 
 if __name__ == '__main__':
-    app.run(port=5001, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=False)
