@@ -1,13 +1,16 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from transformers import pipeline
 from deep_translator import GoogleTranslator
+import requests
+import os
 
 app = Flask(__name__)
 CORS(app)
 
-# Tải mô hình cảm xúc
-classifier = pipeline("text-classification", model="bhadresh-savani/bert-base-go-emotion")
+# Lấy token Hugging Face từ biến môi trường
+HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
+API_URL = "https://api-inference.huggingface.co/models/bhadresh-savani/bert-base-go-emotion"
+HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 
 # Bản đồ ánh xạ nhiều cảm xúc chi tiết về các nhóm chính
 emotion_map = {
@@ -25,6 +28,19 @@ def map_emotion(label):
         if label in values:
             return key
     return 'neutral'
+
+# Hàm gọi Hugging Face Inference API
+def analyze_emotion(text):
+    payload = {"inputs": text}
+    response = requests.post(API_URL, headers=HEADERS, json=payload)
+    if response.status_code != 200:
+        raise Exception(f"Hugging Face API error: {response.text}")
+    # API trả về danh sách dict [{ 'label': ..., 'score': ... }]
+    result = response.json()
+    if isinstance(result, list) and len(result) > 0:
+        return result[0]
+    else:
+        raise Exception("Kết quả API không hợp lệ")
 
 # API phân tích cảm xúc
 @app.route('/analyze', methods=['POST'])
@@ -50,7 +66,7 @@ def analyze():
         return jsonify({'error': f'Lỗi dịch: {str(e)}'}), 500
 
     try:
-        result = classifier(translated, top_k=1)[0][0]
+        result = analyze_emotion(translated)
         label = result['label'].lower()
         score = result['score']
         mapped_label = map_emotion(label)
