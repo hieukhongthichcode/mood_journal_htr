@@ -8,7 +8,7 @@ function CreateJournal() {
   const [content, setContent] = useState('');
   const [emotion, setEmotion] = useState(null);
   const navigate = useNavigate();
-  const { token } = useContext(AuthContext);
+  const { token, addJournal } = useContext(AuthContext); // ✅ addJournal dùng để cập nhật chart
 
   const NODE_URL = import.meta.env.VITE_BACKEND_URL;
   const FLASK_URL = import.meta.env.VITE_FLASK_URL;
@@ -17,12 +17,11 @@ function CreateJournal() {
     e.preventDefault();
 
     try {
-      // 1. Gọi Flask để phân tích cảm xúc
+      // 1️⃣ Gọi Flask để phân tích cảm xúc
       const analysisRes = await axios.post(`${FLASK_URL}/analyze`, { content });
-      console.log("VITE_FLASK_URL:", import.meta.env.VITE_FLASK_URL);
       const { label, score } = analysisRes.data;
 
-      // 2. Gọi NodeJS để lưu journal
+      // 2️⃣ Gọi NodeJS để lưu journal
       const response = await axios.post(
         `${NODE_URL}/api/journals`,
         { title, content, moodLabel: label, moodScore: score },
@@ -31,10 +30,15 @@ function CreateJournal() {
 
       console.log('✅ Đã tạo journal:', response.data);
 
-      // 3. Lưu emotion để hiển thị
+      // 3️⃣ Cập nhật chart nếu có addJournal
+      if (addJournal) {
+        addJournal(response.data);
+      }
+
+      // 4️⃣ Hiển thị phân tích cảm xúc
       setEmotion({ label, score });
 
-      // 4. Reset form
+      // 5️⃣ Reset form
       setTitle('');
       setContent('');
     } catch (error) {
