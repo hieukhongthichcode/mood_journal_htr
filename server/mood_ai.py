@@ -16,7 +16,6 @@ def after_request(response):
     response.headers.add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
     return response
 
-
 # ---------------------------
 # 💡 Health Check
 # ---------------------------
@@ -32,7 +31,6 @@ def home():
         }
     }), 200
 
-
 # ---------------------------
 # 🧠 Hugging Face Config
 # ---------------------------
@@ -40,7 +38,6 @@ HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
 HF_MODEL = "uitnlp/vietnamese-sentiment"
 API_URL = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
 HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"} if HF_API_TOKEN else {}
-
 
 # ---------------------------
 # 📚 Keyword Mapping
@@ -63,7 +60,6 @@ keyword_mapping = {
     "gớm": "disgust"
 }
 
-
 # ---------------------------
 # 🔍 Phân tích cảm xúc bằng từ khóa
 # ---------------------------
@@ -79,10 +75,20 @@ def analyze_by_keywords(text: str):
             }
     return None
 
+# ---------------------------
+# 🤖 Phân tích cảm xúc bằng HuggingFace + mapping
+# ---------------------------
+def map_hf_to_six(label: str):
+    """Map nhãn HF -> 6 loại cảm xúc"""
+    label = label.lower()
+    if label == "positive":
+        return "joy"
+    elif label == "negative":
+        return "sadness"  # có thể tinh chỉnh thêm
+    elif label == "neutral":
+        return "neutral"
+    return "neutral"
 
-# ---------------------------
-# 🤖 Phân tích cảm xúc bằng HuggingFace
-# ---------------------------
 def analyze_by_hgf(text: str):
     try:
         payload = {"inputs": text}
@@ -90,7 +96,7 @@ def analyze_by_hgf(text: str):
 
         if response.status_code != 200:
             return {
-                "label": "unknown",
+                "label": "neutral",
                 "original_label": None,
                 "score": 0.0,
                 "method": "huggingface",
@@ -100,15 +106,16 @@ def analyze_by_hgf(text: str):
         result = response.json()
         if isinstance(result, list) and len(result) > 0:
             best = max(result, key=lambda x: x.get("score", 0))
+            mapped_label = map_hf_to_six(best.get("label", "neutral"))
             return {
-                "label": best.get("label", "unknown").lower(),
+                "label": mapped_label,
                 "original_label": best.get("label"),
                 "score": best.get("score", 0.0),
                 "method": "huggingface"
             }
         else:
             return {
-                "label": "unknown",
+                "label": "neutral",
                 "original_label": None,
                 "score": 0.0,
                 "method": "huggingface",
@@ -116,7 +123,7 @@ def analyze_by_hgf(text: str):
             }
     except requests.exceptions.Timeout:
         return {
-            "label": "unknown",
+            "label": "neutral",
             "original_label": None,
             "score": 0.0,
             "method": "huggingface",
@@ -124,16 +131,15 @@ def analyze_by_hgf(text: str):
         }
     except requests.exceptions.RequestException as e:
         return {
-            "label": "unknown",
+            "label": "neutral",
             "original_label": None,
             "score": 0.0,
             "method": "huggingface",
             "error": f"Lỗi request: {str(e)}"
         }
 
-
 # ---------------------------
-# 📝 API phân tích cảm xúc (tạo/sửa bài viết)
+# 📝 API phân tích cảm xúc
 # ---------------------------
 @app.route("/analyze", methods=["POST"])
 def analyze():
@@ -166,13 +172,12 @@ def analyze():
 
     except Exception as e:
         return jsonify({
-            "label": "unknown",
+            "label": "neutral",
             "original_label": None,
             "score": 0.0,
             "method": "error",
             "error": f"Lỗi server: {str(e)}"
         }), 500
-
 
 # ---------------------------
 # 🚀 Run app
