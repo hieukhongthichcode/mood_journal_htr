@@ -5,7 +5,12 @@ import requests
 import os
 
 app = Flask(__name__)
-CORS(app)
+from flask_cors import CORS
+
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "https://mood-journal-htr-git-main-hieutrs-projects.vercel.app"}})
+
+
 
 # Lấy token Hugging Face từ biến môi trường
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
