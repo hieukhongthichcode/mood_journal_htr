@@ -43,22 +43,79 @@ HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"} if HF_API_TOKEN else {}
 # 📚 Keyword Mapping
 # ---------------------------
 keyword_mapping = {
+    # Anger
     "tức": "anger",
     "giận": "anger",
     "bực": "anger",
     "cáu": "anger",
+    "nóng": "anger",
+    "điên": "anger",
+    "ức": "anger",
+    "hận": "anger",
+    "chửi": "anger",
+    "gắt": "anger",
+
+    # Sadness
     "buồn": "sadness",
     "chán": "sadness",
     "khóc": "sadness",
+    "cô đơn": "sadness",
+    "tuyệt vọng": "sadness",
+    "mệt": "sadness",
+    "tổn thương": "sadness",
+    "thất vọng": "sadness",
+    "trống rỗng": "sadness",
+    "u sầu": "sadness",
+
+    # Joy
     "vui": "joy",
     "hạnh phúc": "joy",
     "yêu": "joy",
+    "thoải mái": "joy",
+    "hài lòng": "joy",
+    "thích": "joy",
+    "phấn khởi": "joy",
+    "tươi": "joy",
+    "may mắn": "joy",
+    "cười": "joy",
+
+    # Fear
     "sợ": "fear",
     "lo": "fear",
     "run": "fear",
+    "hoảng": "fear",
+    "ám ảnh": "fear",
+    "bất an": "fear",
+    "lo lắng": "fear",
+    "rùng mình": "fear",
+    "sợ hãi": "fear",
+    "dè dặt": "fear",
+
+    # Disgust
     "ghê": "disgust",
-    "gớm": "disgust"
+    "gớm": "disgust",
+    "khó chịu": "disgust",
+    "bẩn": "disgust",
+    "kinh": "disgust",
+    "khinh": "disgust",
+    "ghét": "disgust",
+    "dị ứng": "disgust",
+    "chán ghét": "disgust",
+    "phẫn nộ": "disgust",
+
+    # Neutral (từ trung tính)
+    "bình thường": "neutral",
+    "ổn": "neutral",
+    "ok": "neutral",
+    "không sao": "neutral",
+    "bình tĩnh": "neutral",
+    "dửng dưng": "neutral",
+    "trung lập": "neutral",
+    "được": "neutral",
+    "thường": "neutral",
+    "tạm ổn": "neutral"
 }
+
 
 # ---------------------------
 # 🔍 Phân tích cảm xúc bằng từ khóa
