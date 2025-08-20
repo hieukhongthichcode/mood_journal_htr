@@ -16,7 +16,7 @@ function CreateJournal() {
   e.preventDefault();
 
   try {
-    const response = await axios.post('http://localhost:5000/api/journals', {
+    const response = await axios.post('https://mood-journal-htr.onrender.com/api/journals', {
       title,
       content,
     }, {

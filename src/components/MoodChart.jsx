@@ -52,7 +52,7 @@ export default function MoodChart({ refresh }) {
         const token = localStorage.getItem("token");
         if (!token) return console.error("⚠️ Token không tồn tại.");
 
-        const res = await axios.get("http://localhost:5000/api/journals/moods", {
+        const res = await axios.get("https://mood-journal-htr.onrender.com/api/journals/moods", {
           headers: { Authorization: `Bearer ${token}` },
         });
 

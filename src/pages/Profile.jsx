@@ -66,7 +66,7 @@ const Profile = () => {
 
   const saveProfile = async (name, avatar) => {
     try {
-      const res = await axios.put(`http://localhost:5000/api/auth/${user._id}`, {
+      const res = await axios.put(`https://mood-journal-htr.onrender.com/api/auth/${user._id}`, {
         name,
         avatar,
       });
