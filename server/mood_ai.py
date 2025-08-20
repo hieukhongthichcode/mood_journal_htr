@@ -6,12 +6,16 @@ import os
 
 app = Flask(__name__)
 
-# ✅ Fix CORS cho mọi domain, header, method
-CORS(app, resources={r"/*": {
-    "origins": "*",
-    "allow_headers": ["Content-Type", "Authorization"],
-    "methods": ["GET", "POST", "OPTIONS"]
-}}, supports_credentials=True)
+# ✅ Bật CORS cho tất cả domain
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+# ✅ Thêm header CORS cho chắc chắn (tránh lỗi preflight 404/blocked)
+@app.after_request
+def after_request(response):
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+    response.headers.add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+    return response
 
 @app.route("/", methods=["GET"])
 def home():
@@ -66,7 +70,6 @@ def analyze_by_hgf(text: str):
 
     result = response.json()
 
-    # Model sentiment tiếng Việt (POS, NEU, NEG)
     if isinstance(result, list) and len(result) > 0:
         best = max(result, key=lambda x: x["score"])
         return {
@@ -87,7 +90,7 @@ def analyze():
     if not content:
         return jsonify({"error": "Thiếu content hoặc text"}), 400
 
-    # Nếu người dùng đã chọn cảm xúc thủ công
+    # Nếu người dùng chọn cảm xúc thủ công
     if user_selected_label:
         return jsonify({
             "label": user_selected_label.lower(),
@@ -106,7 +109,6 @@ def analyze():
         result = analyze_by_hgf(content)
         return jsonify(result)
     except Exception as e:
-        # ✅ Trả về fallback để FE không bị NaN%
         return jsonify({
             "label": "unknown",
             "original_label": None,
@@ -116,6 +118,5 @@ def analyze():
         }), 500
 
 if __name__ == "__main__":
-    # ✅ Render sẽ inject PORT (vd: 10000), không fix cứng 5001 nữa
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
