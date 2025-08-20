@@ -1,15 +1,15 @@
 import { useState, useContext } from 'react';
 import axios from 'axios';
-import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
 function CreateJournal() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [emotion, setEmotion] = useState(null);
 
-  const { token, addJournal } = useContext(AuthContext);
   const navigate = useNavigate();
+  const { token, addJournal } = useContext(AuthContext);
 
   const NODE_URL = import.meta.env.VITE_BACKEND_URL;
   const FLASK_URL = import.meta.env.VITE_FLASK_URL;
@@ -18,40 +18,31 @@ function CreateJournal() {
     e.preventDefault();
 
     try {
-      // 1. Gọi Flask để phân tích cảm xúc
+      // 1. Gọi Flask phân tích cảm xúc
       const analysisRes = await axios.post(`${FLASK_URL}/analyze`, { content });
       const { label, score } = analysisRes.data;
 
-      // 2. Gọi NodeJS để lưu journal
+      // 2. Gọi NodeJS lưu journal
       const response = await axios.post(
         `${NODE_URL}/api/journals`,
-        {
-          title,
-          content,
-          moodLabel: label,
-          moodScore: score,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { title, content, moodLabel: label, moodScore: score },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // 3. Lưu cảm xúc hiển thị
+      console.log('✅ Đã tạo:', response.data);
+
+      // 3. Cập nhật emotion để hiển thị
       setEmotion({ label, score });
 
-      // 4. ✅ Thêm journal mới vào context → chart sẽ tự cập nhật
-      if (addJournal) {
-        addJournal(response.data);
-      }
-
-      console.log('✅ Đã tạo journal:', response.data);
+      // 4. Cập nhật context (chart tự update)
+      if (addJournal) addJournal(response.data);
 
       // 5. Reset form
       setTitle('');
       setContent('');
     } catch (error) {
       console.error('❌ Lỗi khi tạo bài viết:', error.response?.data || error.message);
-      alert('Tạo bài viết thất bại, kiểm tra log!');
+      alert('Tạo bài viết thất bại');
     }
   };
 
@@ -91,23 +82,12 @@ function CreateJournal() {
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
-            <button
-              type="submit"
-              className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-4 py-3 rounded-lg transition-all duration-300 shadow-md"
-            >
-              ✨ Gửi Nhật Ký
-            </button>
-
-            {/* ✅ Nút xem biểu đồ */}
-            <button
-              type="button"
-              onClick={() => navigate('/chart')}
-              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-3 rounded-lg transition-all duration-300 shadow-md"
-            >
-              📊 Xem Biểu Đồ
-            </button>
-          </div>
+          <button
+            type="submit"
+            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-4 py-3 rounded-lg transition-all duration-300 shadow-md"
+          >
+            ✨ Gửi Nhật Ký
+          </button>
         </form>
 
         {emotion && (
@@ -121,6 +101,13 @@ function CreateJournal() {
             <p className="text-gray-800 dark:text-gray-100">
               <strong>Mức độ chắc chắn:</strong> {(emotion.score * 100).toFixed(2)}%
             </p>
+
+            <button
+              onClick={() => navigate('/home', { state: { reload: true } })}
+              className="mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
+            >
+              📊 Xem biểu đồ cảm xúc
+            </button>
           </div>
         )}
       </div>
