@@ -26,7 +26,7 @@ function CreateJournal() {
     });
 
     console.log('Đã tạo:', response.data);
-    setEmotion(response.data.data.mood);
+    setEmotion(response.data);
   } catch (error) {
     console.error('Lỗi khi tạo bài viết:', error.response?.data || error.message);
     alert('Tạo bài viết thất bại');

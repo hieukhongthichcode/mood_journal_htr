@@ -6,6 +6,17 @@ import os
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "service": "Mood AI API",
+        "status": "running",
+        "routes": {
+            "/": "GET - Health check",
+            "/analyze": "POST - Phân tích cảm xúc (body: {content|text, moodLabel(optional)})"
+        }
+    }), 200
+
 
 # Hugging Face model (ví dụ sentiment tiếng Việt)
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
