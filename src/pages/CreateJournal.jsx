@@ -1,122 +1,99 @@
-import { useState, useContext } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext';
+import React, { useState } from "react";
+import axios from "axios";
 
 function CreateJournal() {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [emotion, setEmotion] = useState(null);
-  const navigate = useNavigate();
-  const { token } = useContext(AuthContext);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Lấy URL từ .env (⚠️ đúng tên biến)
-  const NODE_URL = import.meta.env.VITE_BACKEND_URL; // NodeJS backend
-  const FLASK_URL = import.meta.env.VITE_FLASK_URL;  // Flask backend
+  // 🟢 Hàm chuẩn hóa nhãn từ Flask
+  function normalizeLabel(label) {
+    if (!label) return "NEUTRAL";
+    switch (label.toLowerCase()) {
+      case "joy":
+        return "POSITIVE";
+      case "sadness":
+      case "anger":
+      case "fear":
+      case "disgust":
+        return "NEGATIVE";
+      default:
+        return "NEUTRAL";
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!content.trim()) return;
+
+    setLoading(true);
 
     try {
-      // 1. Gọi Flask để phân tích cảm xúc
-      console.log("📡 Gọi Flask:", `${FLASK_URL}/analyze`);
-      const analysisRes = await axios.post(`${FLASK_URL}/analyze`, { content });
-      const { label, score } = analysisRes.data;
-      console.log("✅ Flask trả về:", analysisRes.data);
+      // 🟡 Gửi content sang Flask để phân tích
+      const flaskRes = await axios.post(
+        `${import.meta.env.VITE_FLASK_URL}/analyze`,
+        { content },
+        { headers: { "Content-Type": "application/json" } }
+      );
 
-      // 2. Gọi NodeJS để lưu journal
-      console.log("📡 Gọi NodeJS:", `${NODE_URL}/api/journals`);
-      const response = await axios.post(
-        `${NODE_URL}/api/journals`,
+      const { label, score } = flaskRes.data;
+      const normalizedLabel = normalizeLabel(label);
+
+      // 🟢 Gửi dữ liệu sang Node backend để lưu vào MongoDB
+      await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/journals`,
         {
           title,
           content,
-          moodLabel: label,
+          moodLabel: normalizedLabel,
           moodScore: score,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { withCredentials: true }
       );
 
-      console.log('✅ Đã tạo journal:', response.data);
-
-      // 3. Hiển thị kết quả
-      setEmotion({ label, score });
-    } catch (error) {
-      console.error('❌ Lỗi khi tạo bài viết:', error.response?.data || error.message);
-      alert('Tạo bài viết thất bại, kiểm tra log!');
+      alert("📝 Nhật ký đã được lưu thành công!");
+      setTitle("");
+      setContent("");
+    } catch (err) {
+      console.error("❌ Lỗi khi tạo journal:", err);
+      alert("Có lỗi xảy ra, vui lòng thử lại!");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-yellow-50 dark:bg-slate-900 py-12 px-4 mt-6">
-      <div className="max-w-3xl mx-auto bg-[url('https://www.transparenttextures.com/patterns/paper-fibers.png')] bg-repeat rounded-3xl shadow-2xl p-10 border-l-[6px] border-yellow-400 dark:border-yellow-600">
-        <h1 className="text-4xl font-bold text-center mb-8 text-yellow-800 dark:text-yellow-300">
-          📖 Sổ Nhật Ký Cảm Xúc
-        </h1>
+    <form
+      onSubmit={handleSubmit}
+      className="max-w-xl mx-auto bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 space-y-4"
+    >
+      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
+        Viết nhật ký mới
+      </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-lg font-medium text-gray-800 dark:text-gray-100 mb-1">
-              📌 Tiêu đề
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Hôm nay trời thế nào trong lòng bạn?"
-              required
-              className="w-full px-4 py-3 border border-yellow-300 dark:border-yellow-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-inner"
-            />
-          </div>
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Tiêu đề..."
+        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:text-white"
+      />
 
-          <div>
-            <label className="block text-lg font-medium text-gray-800 dark:text-gray-100 mb-1">
-              📝 Nội dung
-            </label>
-            <textarea
-              rows="8"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Hãy thả lỏng và viết ra tất cả những gì bạn cảm nhận được..."
-              required
-              className="w-full px-4 py-3 border border-yellow-300 dark:border-yellow-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-inner resize-none"
-            />
-          </div>
+      <textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder="Hãy viết cảm xúc của bạn..."
+        className="w-full p-2 border rounded-md dark:bg-gray-700 dark:text-white h-32"
+      />
 
-          <button
-            type="submit"
-            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-4 py-3 rounded-lg transition-all duration-300 shadow-md"
-          >
-            ✨ Gửi Nhật Ký
-          </button>
-        </form>
-
-        {emotion && (
-          <div className="mt-10 bg-yellow-100 dark:bg-slate-700 border-l-4 border-yellow-400 dark:border-yellow-500 p-5 rounded-lg shadow-sm">
-            <h3 className="text-xl font-bold text-yellow-900 dark:text-yellow-200 mb-2">
-              🧠 Phân Tích Cảm Xúc:
-            </h3>
-            <p className="text-gray-800 dark:text-gray-100">
-              <strong>Cảm xúc:</strong> {emotion.label}
-            </p>
-            <p className="text-gray-800 dark:text-gray-100">
-              <strong>Mức độ chắc chắn:</strong> {(emotion.score * 100).toFixed(2)}%
-            </p>
-
-            <button
-              onClick={() => navigate('/home', { state: { reload: true } })}
-              className="mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
-            >
-              📊 Xem biểu đồ cảm xúc
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50"
+      >
+        {loading ? "Đang lưu..." : "Lưu nhật ký"}
+      </button>
+    </form>
   );
 }
 
