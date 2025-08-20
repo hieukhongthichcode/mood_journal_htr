@@ -6,6 +6,7 @@ import os
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
+
 @app.route("/", methods=["GET"])
 def home():
     return jsonify({
@@ -17,11 +18,10 @@ def home():
         }
     }), 200
 
-
 # Hugging Face model (ví dụ sentiment tiếng Việt)
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
 API_URL = "https://api-inference.huggingface.co/models/uitnlp/vietnamese-sentiment"
-HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"} if HF_API_TOKEN else {}
 
 # Mapping từ khóa tiếng Việt sang emotion
 keyword_mapping = {
@@ -100,7 +100,14 @@ def analyze():
         result = analyze_by_hgf(content)
         return jsonify(result)
     except Exception as e:
-        return jsonify({"error": f"Lỗi phân tích cảm xúc: {str(e)}"}), 500
+        # ✅ Trả về fallback để FE không bị NaN%
+        return jsonify({
+            "label": "unknown",
+            "original_label": None,
+            "score": 0.0,
+            "method": "error",
+            "error": f"Lỗi phân tích cảm xúc: {str(e)}"
+        }), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=False)
