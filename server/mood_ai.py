@@ -35,12 +35,16 @@ def analyze_emotion(text):
     response = requests.post(API_URL, headers=HEADERS, json=payload)
     if response.status_code != 200:
         raise Exception(f"Hugging Face API error: {response.text}")
-    # API trả về danh sách dict [{ 'label': ..., 'score': ... }]
+    
     result = response.json()
-    if isinstance(result, list) and len(result) > 0:
-        return result[0]
+    # Kết quả thường có dạng: [[{"label":"anger","score":0.89}, {"label":"joy","score":0.01}, ...]]
+    if isinstance(result, list) and len(result) > 0 and isinstance(result[0], list):
+        candidates = result[0]
+        # lấy nhãn có score cao nhất
+        best = max(candidates, key=lambda x: x["score"])
+        return best
     else:
-        raise Exception("Kết quả API không hợp lệ")
+        raise Exception(f"Kết quả API không hợp lệ: {result}")
 
 # API phân tích cảm xúc
 @app.route('/analyze', methods=['POST'])
@@ -76,7 +80,8 @@ def analyze():
     return jsonify({
         'label': mapped_label,
         'original_label': label,
-        'score': score
+        'score': score,
+        'translated_text': translated
     })
 
 if __name__ == '__main__':
