@@ -28,7 +28,10 @@ const Register = () => {
     setError("");
 
     try {
-      const res = await axios.post("/api/auth/register", formData);
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/auth/register`,
+        formData
+      );
 
       if (res.status === 201 || res.status === 200) {
         // 👉 Chuyển hướng và truyền thông báo + dữ liệu đăng nhập sang Login
