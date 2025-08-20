@@ -1,3 +1,4 @@
+// CreateJournal.jsx
 import React, { useState, useContext } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -21,14 +22,13 @@ function CreateJournal() {
       const analysisRes = await axios.post(`${FLASK_URL}/analyze`, { content });
       const { label, score } = analysisRes.data;
 
-      // 2️⃣ Gọi NodeJS để lưu journal (gửi đúng schema BE cần)
+      // 2️⃣ Gọi NodeJS để lưu journal (gửi mood = object để chart đọc được)
       const response = await axios.post(
         `${NODE_URL}/api/journals`,
         {
           title,
           content,
-          mood: label,       // 👈 string
-          moodScore: score,  // 👈 number
+          mood: { label, score }, // 👈 gửi object chứ không phải string/number rời rạc
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -41,8 +41,7 @@ function CreateJournal() {
       if (addJournal) {
         const newJournal = {
           ...response.data,
-          mood: response.data.mood || label,
-          moodScore: response.data.moodScore || score,
+          mood: response.data.mood || { label, score },
         };
         addJournal(newJournal);
       }
