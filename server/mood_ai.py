@@ -7,7 +7,6 @@ app = Flask(__name__)
 
 # 🔒 Chỉ cho phép domain frontend (Vercel) gọi API
 FRONTEND_DOMAIN = "https://mood-journal-htr-git-main-hieutrs-projects.vercel.app"
-
 CORS(app, resources={r"/*": {"origins": FRONTEND_DOMAIN}})
 
 @app.after_request
@@ -85,23 +84,52 @@ def analyze_by_keywords(text: str):
 # 🤖 Phân tích cảm xúc bằng HuggingFace
 # ---------------------------
 def analyze_by_hgf(text: str):
-    payload = {"inputs": text}
-    response = requests.post(API_URL, headers=HEADERS, json=payload)
+    try:
+        payload = {"inputs": text}
+        response = requests.post(API_URL, headers=HEADERS, json=payload, timeout=15)
 
-    if response.status_code != 200:
-        raise Exception(f"Hugging Face API error: {response.text}")
+        if response.status_code != 200:
+            return {
+                "label": "unknown",
+                "original_label": None,
+                "score": 0.0,
+                "method": "huggingface",
+                "error": f"HF API error {response.status_code}: {response.text}"
+            }
 
-    result = response.json()
-    if isinstance(result, list) and len(result) > 0:
-        best = max(result, key=lambda x: x["score"])
+        result = response.json()
+        if isinstance(result, list) and len(result) > 0:
+            best = max(result, key=lambda x: x.get("score", 0))
+            return {
+                "label": best.get("label", "unknown").lower(),
+                "original_label": best.get("label"),
+                "score": best.get("score", 0.0),
+                "method": "huggingface"
+            }
+        else:
+            return {
+                "label": "unknown",
+                "original_label": None,
+                "score": 0.0,
+                "method": "huggingface",
+                "error": f"Kết quả không hợp lệ: {result}"
+            }
+    except requests.exceptions.Timeout:
         return {
-            "label": best["label"].lower(),
-            "original_label": best["label"],
-            "score": best["score"],
-            "method": "huggingface"
+            "label": "unknown",
+            "original_label": None,
+            "score": 0.0,
+            "method": "huggingface",
+            "error": "HuggingFace API timeout"
         }
-    else:
-        raise Exception(f"Kết quả API không hợp lệ: {result}")
+    except requests.exceptions.RequestException as e:
+        return {
+            "label": "unknown",
+            "original_label": None,
+            "score": 0.0,
+            "method": "huggingface",
+            "error": f"Lỗi request: {str(e)}"
+        }
 
 
 # ---------------------------
@@ -109,38 +137,40 @@ def analyze_by_hgf(text: str):
 # ---------------------------
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    data = request.get_json() or {}
-    content = data.get("content") or data.get("text")
-    user_selected_label = data.get("moodLabel")
-    is_update = data.get("isUpdate", False)  # ⚡ phân biệt create/update
-
-    if not content:
-        return jsonify({"error": "Thiếu content hoặc text"}), 400
-
-    # 🟡 Nếu là update và có chọn cảm xúc thủ công → giữ nguyên, không phân tích
-    if is_update and user_selected_label:
-        return jsonify({
-            "label": user_selected_label.lower(),
-            "original_label": user_selected_label,
-            "score": 1.0,
-            "method": "manual"
-        })
-
-    # 🔍 Nếu không có mood thủ công → phân tích
-    keyword_result = analyze_by_keywords(content)
-    if keyword_result:
-        return jsonify(keyword_result)
-
     try:
+        data = request.get_json(force=True, silent=True) or {}
+        content = data.get("content") or data.get("text")
+        user_selected_label = data.get("moodLabel")
+        is_update = data.get("isUpdate", False)
+
+        if not content:
+            return jsonify({"error": "Thiếu content hoặc text"}), 400
+
+        # 🟡 Nếu là update và có chọn cảm xúc thủ công → giữ nguyên
+        if is_update and user_selected_label:
+            return jsonify({
+                "label": user_selected_label.lower(),
+                "original_label": user_selected_label,
+                "score": 1.0,
+                "method": "manual"
+            })
+
+        # 🔍 Nếu không có mood thủ công → phân tích
+        keyword_result = analyze_by_keywords(content)
+        if keyword_result:
+            return jsonify(keyword_result)
+
+        # 🤖 Nếu từ khóa không có → HuggingFace
         result = analyze_by_hgf(content)
         return jsonify(result)
+
     except Exception as e:
         return jsonify({
             "label": "unknown",
             "original_label": None,
             "score": 0.0,
             "method": "error",
-            "error": f"Lỗi phân tích cảm xúc: {str(e)}"
+            "error": f"Lỗi server: {str(e)}"
         }), 500
 
 
