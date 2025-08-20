@@ -5,7 +5,13 @@ import requests
 import os
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+
+# ✅ Fix CORS cho mọi domain, header, method
+CORS(app, resources={r"/*": {
+    "origins": "*",
+    "allow_headers": ["Content-Type", "Authorization"],
+    "methods": ["GET", "POST", "OPTIONS"]
+}}, supports_credentials=True)
 
 @app.route("/", methods=["GET"])
 def home():
@@ -18,7 +24,7 @@ def home():
         }
     }), 200
 
-# Hugging Face model (ví dụ sentiment tiếng Việt)
+# Hugging Face model
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
 API_URL = "https://api-inference.huggingface.co/models/uitnlp/vietnamese-sentiment"
 HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"} if HF_API_TOKEN else {}
@@ -110,4 +116,6 @@ def analyze():
         }), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=False)
+    # ✅ Render sẽ inject PORT (vd: 10000), không fix cứng 5001 nữa
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
