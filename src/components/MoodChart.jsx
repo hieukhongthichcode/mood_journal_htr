@@ -55,6 +55,7 @@ export default function MoodChart({ refresh }) {
         const res = await axios.get("https://mood-journal-htr.onrender.com/api/journals/moods", {
           headers: { Authorization: `Bearer ${token}` },
         });
+        console.log("📊 Raw moods data:", res.data);
 
         const rawData = res.data;
         if (!Array.isArray(rawData) || rawData.length === 0) {
