@@ -8,7 +8,7 @@ function CreateJournal() {
   const [content, setContent] = useState('');
   const [emotion, setEmotion] = useState(null);
   const navigate = useNavigate();
-  const { token, addJournal } = useContext(AuthContext); // ✅ addJournal dùng để cập nhật chart
+  const { token, addJournal } = useContext(AuthContext);
 
   const NODE_URL = import.meta.env.VITE_BACKEND_URL;
   const FLASK_URL = import.meta.env.VITE_FLASK_URL;
@@ -21,26 +21,37 @@ function CreateJournal() {
       const analysisRes = await axios.post(`${FLASK_URL}/analyze`, { content });
       const { label, score } = analysisRes.data;
 
-      // 2️⃣ Gọi NodeJS để lưu journal
+      // 2️⃣ Gọi NodeJS để lưu journal (gửi đúng schema)
       const response = await axios.post(
         `${NODE_URL}/api/journals`,
-        { title, content, moodLabel: label, moodScore: score },
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          title,
+          content,
+          mood: { label, score },   // 👈 sửa schema cho thống nhất
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
 
       console.log('✅ Đã tạo journal:', response.data);
 
-      // 3️⃣ Cập nhật chart nếu có addJournal
+      // 3️⃣ Cập nhật chart với dữ liệu chuẩn
       if (addJournal) {
-        addJournal(response.data);
+        // convert để chắc chắn chart hiểu đúng
+        const newJournal = {
+          ...response.data,
+          mood: response.data.mood || { label, score },
+        };
+        addJournal(newJournal);
       }
 
       // 4️⃣ Hiển thị phân tích cảm xúc
       setEmotion({ label, score });
 
-      // 5️⃣ Reset form
-      setTitle('');
-      setContent('');
+      // ❌ KHÔNG reset form nữa
+      // setTitle('');
+      // setContent('');
     } catch (error) {
       console.error('❌ Lỗi khi tạo bài viết:', error.response?.data || error.message);
       alert('Tạo bài viết thất bại, kiểm tra log!');
