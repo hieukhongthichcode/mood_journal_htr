@@ -1,14 +1,13 @@
 import { useState, useContext } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 function CreateJournal() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [emotion, setEmotion] = useState(null);
-  const navigate = useNavigate();
-  const { token } = useContext(AuthContext);
+
+  const { token, addJournal } = useContext(AuthContext); // ✅ lấy hàm addJournal từ context
 
   const NODE_URL = import.meta.env.VITE_BACKEND_URL;
   const FLASK_URL = import.meta.env.VITE_FLASK_URL;
@@ -19,7 +18,7 @@ function CreateJournal() {
     try {
       // 1. Gọi Flask để phân tích cảm xúc
       const analysisRes = await axios.post(`${FLASK_URL}/analyze`, { content });
-      const { label, score } = analysisRes.data; // ✅ giữ nguyên label gốc
+      const { label, score } = analysisRes.data;
 
       // 2. Gọi NodeJS để lưu journal
       const response = await axios.post(
@@ -27,7 +26,7 @@ function CreateJournal() {
         {
           title,
           content,
-          moodLabel: label,   // ✅ lưu đúng nhãn gốc từ Flask
+          moodLabel: label,
           moodScore: score,
         },
         {
@@ -35,9 +34,19 @@ function CreateJournal() {
         }
       );
 
-      // 3. Hiển thị kết quả
+      // 3. Cập nhật cảm xúc hiển thị
       setEmotion({ label, score });
+
+      // 4. ✅ Thêm journal mới vào context → chart sẽ tự cập nhật
+      if (addJournal) {
+        addJournal(response.data);
+      }
+
       console.log('✅ Đã tạo journal:', response.data);
+
+      // 5. Reset form
+      setTitle('');
+      setContent('');
     } catch (error) {
       console.error('❌ Lỗi khi tạo bài viết:', error.response?.data || error.message);
       alert('Tạo bài viết thất bại, kiểm tra log!');
@@ -99,13 +108,6 @@ function CreateJournal() {
             <p className="text-gray-800 dark:text-gray-100">
               <strong>Mức độ chắc chắn:</strong> {(emotion.score * 100).toFixed(2)}%
             </p>
-
-            <button
-              onClick={() => navigate('/home', { state: { reload: true } })}
-              className="mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition"
-            >
-              📊 Xem biểu đồ cảm xúc
-            </button>
           </div>
         )}
       </div>
