@@ -1,0 +1,6 @@
+# Bỏ qua virtual environment
+venv/
+
+# Bỏ qua cache Python
+__pycache__/
+*.pyc
