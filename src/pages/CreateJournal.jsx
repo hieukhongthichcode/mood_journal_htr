@@ -19,6 +19,7 @@ function CreateJournal() {
     try {
       // 1. Gọi Flask để phân tích cảm xúc
       const analysisRes = await axios.post(`${FLASK_URL}/analyze`, { content });
+      console.log("VITE_FLASK_URL:", import.meta.env.VITE_FLASK_URL);
       const { label, score } = analysisRes.data;
 
       // 2. Gọi NodeJS để lưu journal
