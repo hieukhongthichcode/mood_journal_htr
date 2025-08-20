@@ -10,20 +10,24 @@ function CreateJournal() {
   const navigate = useNavigate();
   const { token } = useContext(AuthContext);
 
-  // ⚡ Thêm URL Flask (để dễ thay đổi bạn có thể đưa vào .env)
-  const FLASK_URL = import.meta.env.VITE_FLASK_URL || "https://mood-journal-htr-flask.onrender.com";
+  // Lấy URL từ .env (⚠️ đúng tên biến)
+  const NODE_URL = import.meta.env.VITE_BACKEND_URL; // NodeJS backend
+  const FLASK_URL = import.meta.env.VITE_FLASK_URL;  // Flask backend
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      // 1. Gọi Flask API để phân tích cảm xúc
+      // 1. Gọi Flask để phân tích cảm xúc
+      console.log("📡 Gọi Flask:", `${FLASK_URL}/analyze`);
       const analysisRes = await axios.post(`${FLASK_URL}/analyze`, { content });
       const { label, score } = analysisRes.data;
+      console.log("✅ Flask trả về:", analysisRes.data);
 
-      // 2. Gọi NodeJS API để lưu nhật ký kèm cảm xúc
+      // 2. Gọi NodeJS để lưu journal
+      console.log("📡 Gọi NodeJS:", `${NODE_URL}/api/journals`);
       const response = await axios.post(
-        'https://mood-journal-htr.onrender.com/api/journals',
+        `${NODE_URL}/api/journals`,
         {
           title,
           content,
@@ -37,13 +41,13 @@ function CreateJournal() {
         }
       );
 
-      console.log('Đã tạo:', response.data);
+      console.log('✅ Đã tạo journal:', response.data);
 
-      // 3. Lưu emotion để hiển thị ngay
+      // 3. Hiển thị kết quả
       setEmotion({ label, score });
     } catch (error) {
-      console.error('Lỗi khi tạo bài viết:', error.response?.data || error.message);
-      alert('Tạo bài viết thất bại');
+      console.error('❌ Lỗi khi tạo bài viết:', error.response?.data || error.message);
+      alert('Tạo bài viết thất bại, kiểm tra log!');
     }
   };
 
