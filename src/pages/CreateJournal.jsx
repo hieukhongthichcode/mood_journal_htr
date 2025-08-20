@@ -1,13 +1,15 @@
 import { useState, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 function CreateJournal() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [emotion, setEmotion] = useState(null);
 
-  const { token, addJournal } = useContext(AuthContext); // ✅ lấy hàm addJournal từ context
+  const { token, addJournal } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const NODE_URL = import.meta.env.VITE_BACKEND_URL;
   const FLASK_URL = import.meta.env.VITE_FLASK_URL;
@@ -34,7 +36,7 @@ function CreateJournal() {
         }
       );
 
-      // 3. Cập nhật cảm xúc hiển thị
+      // 3. Lưu cảm xúc hiển thị
       setEmotion({ label, score });
 
       // 4. ✅ Thêm journal mới vào context → chart sẽ tự cập nhật
@@ -89,12 +91,23 @@ function CreateJournal() {
             />
           </div>
 
-          <button
-            type="submit"
-            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-4 py-3 rounded-lg transition-all duration-300 shadow-md"
-          >
-            ✨ Gửi Nhật Ký
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              type="submit"
+              className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-4 py-3 rounded-lg transition-all duration-300 shadow-md"
+            >
+              ✨ Gửi Nhật Ký
+            </button>
+
+            {/* ✅ Nút xem biểu đồ */}
+            <button
+              type="button"
+              onClick={() => navigate('/chart')}
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-3 rounded-lg transition-all duration-300 shadow-md"
+            >
+              📊 Xem Biểu Đồ
+            </button>
+          </div>
         </form>
 
         {emotion && (
