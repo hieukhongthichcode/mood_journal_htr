@@ -12,7 +12,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ✅ Middleware (cập nhật để xử lý ảnh lớn)
-app.use(cors());
+app.use(cors({
+  origin: "https://mood-journal-htr.vercel.app", // FE domain Vercel
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
 app.use(express.json({ limit: '5mb' })); // ✅ Cho phép body JSON lớn
 app.use(express.urlencoded({ extended: true, limit: '5mb' })); // ✅ Cho form data lớn
 
