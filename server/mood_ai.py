@@ -7,11 +7,12 @@ import os
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+# Hugging Face model (ví dụ sentiment tiếng Việt)
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
 API_URL = "https://api-inference.huggingface.co/models/uitnlp/vietnamese-sentiment"
 HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 
-# Từ điển mapping từ khoá tiếng Việt
+# Mapping từ khóa tiếng Việt sang emotion
 keyword_mapping = {
     "tức": "anger",
     "giận": "anger",
@@ -30,39 +31,50 @@ keyword_mapping = {
     "gớm": "disgust"
 }
 
-def analyze_by_keywords(text):
+# 1. Phân tích bằng từ khóa
+def analyze_by_keywords(text: str):
     text = text.lower()
     for k, v in keyword_mapping.items():
         if k in text:
-            return {"label": v, "score": 0.95, "method": "keyword"}
+            return {"label": v, "original_label": k, "score": 0.95, "method": "keyword"}
     return None
 
-def analyze_by_hgf(text):
+# 2. Phân tích bằng HuggingFace sentiment model
+def analyze_by_hgf(text: str):
     payload = {"inputs": text}
     response = requests.post(API_URL, headers=HEADERS, json=payload)
+
     if response.status_code != 200:
         raise Exception(f"Hugging Face API error: {response.text}")
+
     result = response.json()
+
     # Model sentiment tiếng Việt (POS, NEU, NEG)
     if isinstance(result, list) and len(result) > 0:
         best = max(result, key=lambda x: x["score"])
-        return {"label": best["label"].lower(), "score": best["score"], "method": "huggingface"}
+        return {
+            "label": best["label"].lower(),
+            "original_label": best["label"],
+            "score": best["score"],
+            "method": "huggingface"
+        }
     else:
         raise Exception(f"Kết quả API không hợp lệ: {result}")
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
     data = request.get_json()
-    content = data.get("content")
+    content = data.get("content") or data.get("text")
     user_selected_label = data.get("moodLabel")
 
     if not content:
-        return jsonify({"error": "Thiếu content"}), 400
+        return jsonify({"error": "Thiếu content hoặc text"}), 400
 
-    # Nếu người dùng đã chọn thủ công
+    # Nếu người dùng đã chọn cảm xúc thủ công
     if user_selected_label:
         return jsonify({
             "label": user_selected_label.lower(),
+            "original_label": user_selected_label,
             "score": 1.0,
             "method": "manual"
         })

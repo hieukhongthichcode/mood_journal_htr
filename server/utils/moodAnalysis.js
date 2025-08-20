@@ -3,7 +3,7 @@ const axios = require('axios');
 async function analyzeMood(text) {
   try {
     const response = await axios.post("https://mood-ai-service.onrender.com/analyze", {
-      text: text
+      content: text
     });
 
     console.log('Kết quả trả về từ Flask:', response.data);
