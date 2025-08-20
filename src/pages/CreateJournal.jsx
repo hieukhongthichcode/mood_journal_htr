@@ -13,30 +13,13 @@ function CreateJournal() {
   const NODE_URL = import.meta.env.VITE_BACKEND_URL;
   const FLASK_URL = import.meta.env.VITE_FLASK_URL;
 
-  // 🟢 Hàm chuẩn hóa label từ Flask
-  const normalizeLabel = (label) => {
-    if (!label) return "NEUTRAL";
-    switch (label.toLowerCase()) {
-      case "joy":
-        return "POSITIVE";
-      case "sadness":
-      case "anger":
-      case "fear":
-      case "disgust":
-        return "NEGATIVE";
-      default:
-        return "NEUTRAL";
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
       // 1. Gọi Flask để phân tích cảm xúc
       const analysisRes = await axios.post(`${FLASK_URL}/analyze`, { content });
-      const { label, score } = analysisRes.data;
-      const normalizedLabel = normalizeLabel(label); // ✅ chuyển đổi sang POSITIVE | NEGATIVE | NEUTRAL
+      const { label, score } = analysisRes.data; // ✅ giữ nguyên label gốc
 
       // 2. Gọi NodeJS để lưu journal
       const response = await axios.post(
@@ -44,7 +27,7 @@ function CreateJournal() {
         {
           title,
           content,
-          moodLabel: normalizedLabel, // ✅ dùng nhãn chuẩn
+          moodLabel: label,   // ✅ lưu đúng nhãn gốc từ Flask
           moodScore: score,
         },
         {
@@ -53,7 +36,7 @@ function CreateJournal() {
       );
 
       // 3. Hiển thị kết quả
-      setEmotion({ label: normalizedLabel, score });
+      setEmotion({ label, score });
       console.log('✅ Đã tạo journal:', response.data);
     } catch (error) {
       console.error('❌ Lỗi khi tạo bài viết:', error.response?.data || error.message);
