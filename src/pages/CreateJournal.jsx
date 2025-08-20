@@ -7,9 +7,8 @@ function CreateJournal() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [emotion, setEmotion] = useState(null);
-
   const navigate = useNavigate();
-  const { token, addJournal } = useContext(AuthContext);
+  const { token } = useContext(AuthContext);
 
   const NODE_URL = import.meta.env.VITE_BACKEND_URL;
   const FLASK_URL = import.meta.env.VITE_FLASK_URL;
@@ -18,31 +17,28 @@ function CreateJournal() {
     e.preventDefault();
 
     try {
-      // 1. Gọi Flask phân tích cảm xúc
+      // 1. Gọi Flask để phân tích cảm xúc
       const analysisRes = await axios.post(`${FLASK_URL}/analyze`, { content });
       const { label, score } = analysisRes.data;
 
-      // 2. Gọi NodeJS lưu journal
+      // 2. Gọi NodeJS để lưu journal
       const response = await axios.post(
         `${NODE_URL}/api/journals`,
         { title, content, moodLabel: label, moodScore: score },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      console.log('✅ Đã tạo:', response.data);
+      console.log('✅ Đã tạo journal:', response.data);
 
-      // 3. Cập nhật emotion để hiển thị
+      // 3. Lưu emotion để hiển thị
       setEmotion({ label, score });
 
-      // 4. Cập nhật context (chart tự update)
-      if (addJournal) addJournal(response.data);
-
-      // 5. Reset form
+      // 4. Reset form
       setTitle('');
       setContent('');
     } catch (error) {
       console.error('❌ Lỗi khi tạo bài viết:', error.response?.data || error.message);
-      alert('Tạo bài viết thất bại');
+      alert('Tạo bài viết thất bại, kiểm tra log!');
     }
   };
 
