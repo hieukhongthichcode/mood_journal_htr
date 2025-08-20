@@ -5,12 +5,8 @@ import requests
 import os
 
 app = Flask(__name__)
-from flask_cors import CORS
-
-app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "https://mood-journal-htr-git-main-hieutrs-projects.vercel.app"}})
-
-
+# Bật CORS cho tất cả origin (hoặc chỉ domain FE của bạn)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Lấy token Hugging Face từ biến môi trường
 HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
@@ -42,10 +38,10 @@ def analyze_emotion(text):
         raise Exception(f"Hugging Face API error: {response.text}")
     
     result = response.json()
-    # Kết quả thường có dạng: [[{"label":"anger","score":0.89}, {"label":"joy","score":0.01}, ...]]
+    # Kết quả thường có dạng [[{"label": "...", "score": ...}, ...]]
     if isinstance(result, list) and len(result) > 0 and isinstance(result[0], list):
         candidates = result[0]
-        # lấy nhãn có score cao nhất
+        # chọn nhãn có score cao nhất
         best = max(candidates, key=lambda x: x["score"])
         return best
     else:
