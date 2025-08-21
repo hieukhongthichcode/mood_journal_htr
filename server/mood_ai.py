@@ -1,70 +1,167 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from transformers import pipeline
-from deep_translator import GoogleTranslator
+import requests
+import os
 
 app = Flask(__name__)
-CORS(app)
 
-# Tải mô hình cảm xúc
-classifier = pipeline(
-    "text-classification", 
-    model="bhadresh-savani/bert-base-go-emotion", 
-    top_k=1
-)
+# 🔒 Domain frontend được phép gọi API
+FRONTEND_DOMAIN = "https://mood-journal-htr-git-main-hieutrs-projects.vercel.app"
+CORS(app, resources={r"/*": {"origins": FRONTEND_DOMAIN}})
 
-# Bản đồ ánh xạ nhiều cảm xúc chi tiết về các nhóm chính
-emotion_map = {
-    'joy': ['joy', 'amusement', 'excitement', 'gratitude', 'love', 'relief', 'pride', 'optimism'],
-    'anger': ['anger', 'annoyance', 'disapproval'],
-    'sadness': ['sadness', 'disappointment', 'grief', 'embarrassment'],
-    'fear': ['fear', 'nervousness', 'remorse'],
-    'disgust': ['disgust', 'confusion'],
-    'neutral': ['neutral', 'realization', 'curiosity', 'desire', 'surprise']
+# ---------------------------
+# 💡 Health Check
+# ---------------------------
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "service": "Mood AI API",
+        "status": "running",
+        "allowed_origin": FRONTEND_DOMAIN,
+        "routes": {
+            "/": "GET - Health check",
+            "/analyze": "POST - Phân tích cảm xúc (body: {content|text, moodLabel(optional), isUpdate(optional)})"
+        }
+    }), 200
+
+# ---------------------------
+# 🧠 Hugging Face Config
+# ---------------------------
+HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
+HF_MODEL = "uitnlp/vietnamese-sentiment"
+API_URL = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
+HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"} if HF_API_TOKEN else {}
+
+# ---------------------------
+# 📚 Keyword Mapping (VN)
+# ---------------------------
+keyword_mapping = {
+    # Anger
+    "tức": "anger", "giận": "anger", "bực": "anger", "cáu": "anger", "nóng": "anger",
+    "điên": "anger", "ức": "anger", "hận": "anger", "chửi": "anger", "gắt": "anger",
+
+    # Sadness
+    "buồn": "sadness", "chán": "sadness", "khóc": "sadness", "cô đơn": "sadness",
+    "tuyệt vọng": "sadness", "mệt": "sadness", "tổn thương": "sadness",
+    "thất vọng": "sadness", "trống rỗng": "sadness", "u sầu": "sadness",
+
+    # Joy
+    "vui": "joy", "hạnh phúc": "joy", "yêu": "joy", "thoải mái": "joy",
+    "hài lòng": "joy", "thích": "joy", "phấn khởi": "joy", "tươi": "joy",
+    "may mắn": "joy", "cười": "joy",
+
+    # Fear
+    "sợ": "fear", "lo": "fear", "run": "fear", "hoảng": "fear", "ám ảnh": "fear",
+    "bất an": "fear", "lo lắng": "fear", "rùng mình": "fear", "sợ hãi": "fear", "dè dặt": "fear",
+
+    # Disgust
+    "ghê": "disgust", "gớm": "disgust", "khó chịu": "disgust", "bẩn": "disgust",
+    "kinh": "disgust", "khinh": "disgust", "ghét": "disgust", "dị ứng": "disgust",
+    "chán ghét": "disgust", "phẫn nộ": "disgust",
+
+    # Neutral
+    "bình thường": "neutral", "ổn": "neutral", "ok": "neutral", "không sao": "neutral",
+    "bình tĩnh": "neutral", "dửng dưng": "neutral", "trung lập": "neutral",
+    "được": "neutral", "thường": "neutral", "tạm ổn": "neutral"
 }
 
-# Hàm ánh xạ nhãn chi tiết về nhóm chính
-def map_emotion(label):
-    for key, values in emotion_map.items():
-        if label in values:
-            return key
-    return 'neutral'
+# ---------------------------
+# 🔍 Phân tích bằng từ khóa
+# ---------------------------
+def analyze_by_keywords(text: str):
+    text = text.lower()
+    for k, v in keyword_mapping.items():
+        if k in text:
+            return {
+                "label": v,
+                "score": 0.95,
+                "method": "keyword"
+            }
+    return None
 
-# API phân tích cảm xúc
-@app.route('/analyze', methods=['POST'])
+# ---------------------------
+# 🤖 HuggingFace + mapping
+# ---------------------------
+def map_hf_to_six(label: str):
+    """Map nhãn HF -> 6 loại"""
+    label = label.lower()
+    if label == "positive":
+        return "joy"
+    elif label == "negative":
+        return "sadness"
+    elif label == "neutral":
+        return "neutral"
+    return "neutral"
+
+def analyze_by_hgf(text: str):
+    try:
+        payload = {"inputs": text}
+        response = requests.post(API_URL, headers=HEADERS, json=payload, timeout=15)
+
+        if response.status_code != 200:
+            return {"label": "neutral", "score": 0.0, "method": "huggingface"}
+
+        result = response.json()
+
+        # Xử lý kết quả nested [[{label, score}]]
+        if isinstance(result, list) and len(result) > 0 and isinstance(result[0], list):
+            result = result[0]
+
+        if isinstance(result, list) and len(result) > 0:
+            best = max(result, key=lambda x: x.get("score", 0))
+            mapped = map_hf_to_six(best.get("label", "neutral"))
+            return {
+                "label": mapped,
+                "score": best.get("score", 0.0),
+                "method": "huggingface"
+            }
+
+        return {"label": "neutral", "score": 0.0, "method": "huggingface"}
+    except Exception:
+        return {"label": "neutral", "score": 0.0, "method": "huggingface"}
+
+# ---------------------------
+# 📝 API
+# ---------------------------
+@app.route("/analyze", methods=["POST"])
 def analyze():
-    data = request.get_json()
-    content = data.get('content')
-    user_selected_label = data.get('moodLabel')  # người dùng có chọn cảm xúc thủ công không?
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        content = data.get("content") or data.get("text")
+        user_selected_label = data.get("moodLabel")
+        is_update = data.get("isUpdate", False)
 
-    if not content:
-        return jsonify({'error': 'Thiếu content'}), 400
+        if not content:
+            return jsonify({"error": "Thiếu content hoặc text"}), 400
 
-    # Nếu người dùng đã chọn cảm xúc thủ công → trả về luôn
-    if user_selected_label:
+        # Nếu user update + chọn tay → ưu tiên
+        if is_update and user_selected_label:
+            return jsonify({
+                "label": user_selected_label.lower(),
+                "score": 1.0,
+                "method": "manual"
+            })
+
+        # Check từ khóa trước
+        keyword_result = analyze_by_keywords(content)
+        if keyword_result:
+            return jsonify(keyword_result)
+
+        # Nếu không có keyword → gọi HuggingFace
+        hf_result = analyze_by_hgf(content)
+        return jsonify(hf_result)
+
+    except Exception as e:
         return jsonify({
-            'label': user_selected_label.lower(),
-            'score': 1.0  # Ưu tiên cảm xúc người dùng chọn
-        })
+            "label": "neutral",
+            "score": 0.0,
+            "method": "error",
+            "error": str(e)
+        }), 500
 
-    # Nếu không có → tiến hành phân tích AI
-    try:
-        translated = GoogleTranslator(source='auto', target='en').translate(content)
-    except Exception as e:
-        return jsonify({'error': f'Lỗi dịch: {str(e)}'}), 500
-
-    try:
-        result = classifier(translated)[0][0]
-        label = result['label'].lower()
-        score = result['score']
-        mapped_label = map_emotion(label)
-    except Exception as e:
-        return jsonify({'error': f'Lỗi phân tích cảm xúc: {str(e)}'}), 500
-
-    return jsonify({
-        'label': mapped_label,
-        'score': score
-    })
-
-if __name__ == '__main__':
-    app.run(port=5001, debug=True)
+# ---------------------------
+# 🚀 Run
+# ---------------------------
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
