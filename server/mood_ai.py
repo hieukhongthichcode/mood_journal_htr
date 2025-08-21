@@ -6,8 +6,11 @@ import os
 app = Flask(__name__)
 
 # 🔒 Domain frontend được phép gọi API
-FRONTEND_DOMAIN = "https://mood-journal-htr-git-main-hieutrs-projects.vercel.app",
-                  "https://mood-journal-htr.vercel.app"
+FRONTEND_DOMAINS = [
+    "https://mood-journal-htr.vercel.app",  # production
+    "https://mood-journal-htr-git-main-hieutrs-projects.vercel.app",  # preview
+    "http://localhost:5173"  # local dev
+]
 CORS(app, resources={r"/*": {"origins": FRONTEND_DOMAIN}})
 
 # ---------------------------
