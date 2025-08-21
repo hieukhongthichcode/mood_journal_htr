@@ -1,57 +1,54 @@
-// CreateJournal.jsx
 import React, { useState, useContext } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { createJournal, analyzeEmotion } from '../api';
 
 function CreateJournal() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [emotion, setEmotion] = useState(null);
+  const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
   const { token, addJournal } = useContext(AuthContext);
 
-  const NODE_URL = import.meta.env.VITE_BACKEND_URL;
-  const FLASK_URL = import.meta.env.VITE_FLASK_URL;
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
       // 1️⃣ Gọi Flask để phân tích cảm xúc
-      const analysisRes = await axios.post(`${FLASK_URL}/analyze`, { content });
+      const analysisRes = await analyzeEmotion(content);
       const { label, score } = analysisRes.data;
 
-      // 2️⃣ Gọi NodeJS để lưu journal (gửi mood = object để chart đọc được)
-      const response = await axios.post(
-        `${NODE_URL}/api/journals`,
-        {
-          title,
-          content,
-          mood: { label, score }, // 👈 gửi object chứ không phải string/number rời rạc
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      // Chuẩn hóa mood cho chart
+      const mood = {
+        label: label || 'unknown',
+        score: Number(score) || 0,
+      };
+
+      // 2️⃣ Gọi NodeJS để lưu journal
+      const response = await createJournal({ title, content, mood }, token);
 
       console.log('✅ Đã tạo journal:', response.data);
 
-      // 3️⃣ Cập nhật chart với dữ liệu chuẩn
+      // 3️⃣ Cập nhật chart
       if (addJournal) {
         const newJournal = {
           ...response.data,
-          mood: response.data.mood || { label, score },
+          mood: response.data.mood || mood,
         };
         addJournal(newJournal);
       }
 
       // 4️⃣ Hiển thị phân tích cảm xúc
-      setEmotion({ label, score });
+      setEmotion(mood);
 
     } catch (error) {
       console.error('❌ Lỗi khi tạo bài viết:', error.response?.data || error.message);
-      alert('Tạo bài viết thất bại, kiểm tra log!');
+      alert(error.response?.data?.message || error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -93,9 +90,12 @@ function CreateJournal() {
 
           <button
             type="submit"
-            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition transform hover:scale-105"
+            disabled={loading}
+            className={`w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition transform hover:scale-105 ${
+              loading ? 'opacity-60 cursor-not-allowed' : ''
+            }`}
           >
-            ✍️ Lưu Nhật Ký
+            {loading ? 'Đang lưu...' : '✍️ Lưu Nhật Ký'}
           </button>
         </form>
 
