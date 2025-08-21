@@ -14,7 +14,7 @@ async function analyzeMood(text) {
   try {
     console.log("📩 Nội dung gửi sang Flask:", text);
 
-    const response = await axios.post("https://mood-ai-service.onrender.com/analyze", {
+    const response = await axios.post("https://mood-journal-htr-1.onrender.com/analyze", {
       content: text
     });
 
