@@ -11,7 +11,7 @@ FRONTEND_DOMAINS = [
     "https://mood-journal-htr-git-main-hieutrs-projects.vercel.app",  # preview
     "http://localhost:5173"  # local dev
 ]
-CORS(app, resources={r"/*": {"origins": FRONTEND_DOMAIN}})
+CORS(app, resources={r"/*": {"origins": FRONTEND_DOMAINS}})
 
 # ---------------------------
 # 💡 Health Check
