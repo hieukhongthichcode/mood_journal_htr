@@ -21,7 +21,7 @@ def home():
     return jsonify({
         "service": "Mood AI API",
         "status": "running",
-        "allowed_origin": FRONTEND_DOMAIN,
+        "allowed_origin": FRONTEND_DOMAINS,
         "routes": {
             "/": "GET - Health check",
             "/analyze": "POST - Phân tích cảm xúc (body: {content|text, moodLabel(optional), isUpdate(optional)})"
