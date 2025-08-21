@@ -32,16 +32,8 @@ router.post('/', auth, async (req, res) => {
 
     const savedJournal = await journal.save();
 
-    res.status(201).json({
-      message: "Tạo bài viết thành công",
-      data: {
-        journal: savedJournal,
-        mood: {
-          label: moodResult.label,
-          score: moodResult.score
-        }
-      }
-    });
+    // ✅ Trả về đồng nhất schema
+    res.status(201).json(savedJournal);
 
   } catch (error) {
     console.error('❌ Lỗi khi tạo bài viết:', error);
@@ -60,7 +52,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// ✅ Lấy dữ liệu moods (phục vụ Chart) → đặt TRƯỚC get by id
+// ✅ Lấy dữ liệu moods (phục vụ Chart)
 router.get('/moods', auth, async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
@@ -129,13 +121,8 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy bài viết để cập nhật" });
     }
 
-    res.json({
-      message: "Đã cập nhật bài viết",
-      data: {
-        journal: updated,
-        mood
-      }
-    });
+    // ✅ Trả về đồng nhất schema
+    res.json(updated);
   } catch (error) {
     console.error("❌ Lỗi khi cập nhật bài viết:", error);
     res.status(500).json({ message: "Lỗi server khi cập nhật" });
