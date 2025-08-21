@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 5000;
 // ✅ Middleware (cập nhật để xử lý ảnh lớn)
 app.use(cors({
   origin: [
+    "https://mood-journal-htr.vercel.app",
     "https://mood-journal-htr-git-main-hieutrs-projects.vercel.app",
     "http://localhost:5173"
   ],
