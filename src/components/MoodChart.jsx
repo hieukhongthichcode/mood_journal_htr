@@ -28,7 +28,6 @@ function useThemeMode() {
   return isDark;
 }
 
-
 export default function MoodChart({ refresh }) {
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,16 +44,18 @@ export default function MoodChart({ refresh }) {
 
   const moodLabels = ["joy", "anger", "sadness", "fear", "disgust", "neutral"];
 
-
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) return console.error("⚠️ Token không tồn tại.");
 
-        const res = await axios.get("https://mood-journal-htr.onrender.com/api/journals/moods", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await axios.get(
+          "https://mood-journal-htr.onrender.com/api/journals/moods",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         console.log("📊 Raw moods data:", res.data);
 
         const rawData = res.data;
@@ -72,11 +73,16 @@ export default function MoodChart({ refresh }) {
           if (rawDate?.$date) rawDate = rawDate.$date;
           const dateObj = new Date(rawDate);
           if (isNaN(dateObj)) continue;
+
           const dateStr = dateObj.toISOString().split("T")[0];
           dateSet.add(dateStr);
-          const moodLabel = item.mood.label;
+
+          // ✅ Sửa lại để lấy đúng field từ backend
+          const moodLabel = item.moodLabel;
+          const moodScore = item.moodScore;
+
           if (moodLabels.includes(moodLabel)) {
-            moodMap[moodLabel][dateStr] = item.mood.score;
+            moodMap[moodLabel][dateStr] = moodScore;
           }
         }
 
@@ -103,9 +109,9 @@ export default function MoodChart({ refresh }) {
       }
     };
 
-    setLoading(true); 
+    setLoading(true);
     fetchData();
-  }, [refresh]); 
+  }, [refresh]);
 
   const chartOptions = useMemo(() => {
     const gridColor = isDark ? "#444" : "#ccc";
@@ -196,7 +202,7 @@ export default function MoodChart({ refresh }) {
       ) : (
         <div className="overflow-x-auto rounded-xl bg-transparent">
           <Line
-            key={isDark ? "dark" : "light"} 
+            key={isDark ? "dark" : "light"}
             data={chartData}
             options={chartOptions}
           />
