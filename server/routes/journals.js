@@ -4,6 +4,22 @@ const Journal = require('../models/Journal');
 const auth = require('../middleware/auth');
 const analyzeMood = require('../utils/moodAnalysis');
 
+// ✅ Helper: Chuẩn hoá dữ liệu trả về
+const formatJournal = (j) => ({
+  _id: j._id,
+  title: j.title,
+  content: j.content,
+  createdAt: j.createdAt,
+  updatedAt: j.updatedAt,
+  userId: j.userId,
+  moodLabel: j.moodLabel,
+  moodScore: j.moodScore,
+  mood: {
+    label: j.moodLabel,
+    score: j.moodScore,
+  },
+});
+
 // ✅ Tạo mới bài viết
 router.post('/', auth, async (req, res) => {
   try {
@@ -14,9 +30,7 @@ router.post('/', auth, async (req, res) => {
       return res.status(401).json({ message: 'Không xác định được người dùng' });
     }
 
-    console.log('📩 Content gửi phân tích:', content);
     const moodResult = await analyzeMood(content);
-    console.log('✅ Kết quả phân tích mood:', moodResult);
 
     if (!moodResult || !moodResult.label || moodResult.score === undefined) {
       return res.status(500).json({ message: 'Phân tích tâm trạng thất bại' });
@@ -31,10 +45,7 @@ router.post('/', auth, async (req, res) => {
     });
 
     const savedJournal = await journal.save();
-
-    // ✅ Trả về đồng nhất schema
-    res.status(201).json(savedJournal);
-
+    res.status(201).json(formatJournal(savedJournal));
   } catch (error) {
     console.error('❌ Lỗi khi tạo bài viết:', error);
     res.status(500).json({ message: 'Lỗi server khi tạo bài viết' });
@@ -46,17 +57,17 @@ router.get('/', auth, async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
     const journals = await Journal.find({ userId }).sort({ createdAt: -1 });
-    res.json(journals);
+    res.json(journals.map(formatJournal));
   } catch (error) {
     res.status(500).json({ message: 'Lỗi server khi lấy bài viết' });
   }
 });
 
-// ✅ Lấy dữ liệu moods (phục vụ Chart)
+// ✅ Lấy dữ liệu moods (Chart)
 router.get('/moods', auth, async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
-    const journals = await Journal.find({ userId }).sort({ createdAt: 1 }); // tăng dần theo ngày
+    const journals = await Journal.find({ userId }).sort({ createdAt: 1 });
 
     const result = journals.map(j => ({
       date: j.createdAt,
@@ -82,7 +93,7 @@ router.get('/:id', auth, async (req, res) => {
     });
 
     if (!journal) return res.status(404).json({ message: "Bài viết không tồn tại" });
-    res.json(journal);
+    res.json(formatJournal(journal));
   } catch (error) {
     console.error("❌ Lỗi khi lấy bài viết theo ID:", error);
     res.status(500).json({ message: "Lỗi server khi lấy bài viết" });
@@ -95,12 +106,7 @@ router.put('/:id', auth, async (req, res) => {
     const { title, content, moodLabel } = req.body;
     const userId = req.user?.id || req.user?._id;
 
-    let mood = {
-      label: moodLabel || '',
-      score: 1.0
-    };
-
-    // Nếu không có moodLabel → gọi AI để phân tích
+    let mood = { label: moodLabel || '', score: 1.0 };
     if (!moodLabel) {
       mood = await analyzeMood(content);
     }
@@ -121,8 +127,7 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy bài viết để cập nhật" });
     }
 
-    // ✅ Trả về đồng nhất schema
-    res.json(updated);
+    res.json(formatJournal(updated));
   } catch (error) {
     console.error("❌ Lỗi khi cập nhật bài viết:", error);
     res.status(500).json({ message: "Lỗi server khi cập nhật" });
