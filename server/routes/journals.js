@@ -12,11 +12,9 @@ const formatJournal = (j) => ({
   createdAt: j.createdAt,
   updatedAt: j.updatedAt,
   userId: j.userId,
-  moodLabel: j.moodLabel,
-  moodScore: j.moodScore,
   mood: {
-    label: j.moodLabel,
-    score: j.moodScore,
+    label: j.moodLabel || "unknown",
+    score: j.moodScore ?? 0,
   },
 });
 
@@ -30,10 +28,10 @@ router.post('/', auth, async (req, res) => {
       return res.status(401).json({ message: 'Không xác định được người dùng' });
     }
 
-    const moodResult = await analyzeMood(content);
-
-    if (!moodResult || !moodResult.label || moodResult.score === undefined) {
-      return res.status(500).json({ message: 'Phân tích tâm trạng thất bại' });
+    // 🚀 AI phân tích mood
+    let moodResult = await analyzeMood(content);
+    if (!moodResult || !moodResult.label) {
+      moodResult = { label: "unknown", score: 0 };
     }
 
     const journal = new Journal({
@@ -72,8 +70,8 @@ router.get('/moods', auth, async (req, res) => {
     const result = journals.map(j => ({
       date: j.createdAt,
       mood: {
-        label: j.moodLabel,
-        score: j.moodScore,
+        label: j.moodLabel || "unknown",
+        score: j.moodScore ?? 0,
       },
     }));
 
@@ -106,9 +104,12 @@ router.put('/:id', auth, async (req, res) => {
     const { title, content, moodLabel } = req.body;
     const userId = req.user?.id || req.user?._id;
 
-    let mood = { label: moodLabel || '', score: 1.0 };
+    // Nếu FE không gửi moodLabel, thì BE tự phân tích lại
+    let mood = { label: moodLabel || "unknown", score: 1.0 };
     if (!moodLabel) {
-      mood = await analyzeMood(content);
+      const aiMood = await analyzeMood(content);
+      if (aiMood && aiMood.label) mood = aiMood;
+      else mood = { label: "unknown", score: 0 };
     }
 
     const updated = await Journal.findOneAndUpdate(
